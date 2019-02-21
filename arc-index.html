@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://unpkg.com/d3"></script>
+  <script src="https://unpkg.com/d3-jetpack"></script>
+  <script src="layout.js"></script>
+  <link rel='stylesheet' href="https://use.typekit.net/ckg7yjc.css">
+  <style>
+    body {
+      margin:0;position:fixed;top:0;right:0;bottom:0;left:0;
+      max-width:620px;
+      max-height:400px;
+    }
+    div.headline-style{
+      margin-left: auto;
+      margin-right:auto;
+      float:center;
+      font-family:franklin-gothic-urw, sans-serif;
+      font-weight:700;
+      font-style: normal;
+      font-size: 18px;
+      color: #cc0000;
+      text-align:center;
+      max width: 500px;
+    }
+    div.subhed-style{
+      margin-left: auto;
+      margin-right:auto;
+      font-family:franklin-gothic-urw, sans-serif;
+      font-weight:700;
+      font-style: normal;
+      font-size: 16px;
+      color: #666666;
+      text-align:center;
+      max-width: 500px;
+    }
+
+    div.tooltip-style{
+        position: absolute;
+        text-align: center;
+        width: 115px;
+        height: 60px;
+        padding: 10px;
+        font-family:franklin-gothic-urw, sans-serif;
+        font-size: 12px;
+        font-weight:bold;
+        background:#cccccc;
+        border: 0px;
+        border-radius: 8px;
+        pointer-events: none;
+      }
+
+      .sourceLabel {
+        color:#cccccc;
+        font-family: sans-serif;
+        font-size: 11px;
+        font-weight: 400;
+      }
+
+  </style>
+</head>
+
+<body>
+  <div class='headline-style'>Human Services Endowments Outnumber All Other Nonprofitsi</div>
+  <div class='subhed-style'>Below is a breakdown of the types of nonprofit foundations that filed 990s in 2016. Hover for details.</div>
+  <svg id='chart'></svg>
+  <script>
+
+    var config = {
+      width: 620,
+      height: 275,
+      rows: 15,
+      columns: 45
+    };
+
+    var defaultTooltip = [];
+    var sourceText = 'Source: "Investment Returns and Distribution Policies of Non-Profit Endowment Funds"';
+    //
+
+    var div = d3.select("body").append("div")
+    .attr("class", "tooltip-style")
+    .style("opacity", 0);
+
+    var data = [
+      { sector: 'Human Services', color: '#cc0000', dots: '200', percent: '25.8' },
+      { sector: 'Education (other)', color: '#666666', dots: '164', percent: '20.5' },
+      { sector: 'Arts, culture, and humanities', color: '#990000', dots: '103', percent: '13.4' },
+      { sector: 'Health', color: '#006699', dots: '90', percent: '11.4' },
+      { sector: 'Public and societal benefit', color: '#999999', dots: '90', percent: '11.3' },
+      { sector: 'Higher education', color: '#cccccc', dots: '46', percent: '5.7' },
+      { sector: 'Environment', color: '#ff9933', dots: '40', percent: '5.0' },
+      { sector: 'Hospitals', color: '#006666', dots: '24', percent: '3.0' },
+      { sector: 'Religion', color: '#99cc33', dots: '17', percent: '2.12' },
+      { sector: 'International', color: '#009999', dots: '10', percent: '1.3' },
+    ];
+    var flatData = [];
+    data.map(d => {
+      for (let i = 0; i < d.dots; i++) {
+        flatData.push({ sector: d.sector, color: d.color, percent: d.percent });
+      }
+    });
+
+    var svg = d3.select('#chart')
+      .at({
+        width: config.width,
+        height: config.height,
+        id: "chart"
+      })
+    	.st({ backgroundColor: '#ffffff' })
+    	.append('g')
+    	.translate([config.width/2,config.height/1.25])
+
+    var layout = d3_iconarray.layout()
+      .height(config.rows)
+      .width(config.columns)
+      .widthFirst(false);
+    var distanceScale = d3
+      .scaleLinear()
+      .domain([0, layout.height()])
+      .range([100,200]);
+    var angleScale = d3
+      .scaleLinear()
+      .domain([0, layout.width()])
+      .range([-180,-20]);
+
+		var iconArray = layout(flatData);
+
+    svg
+    .select('text')
+    .data(sourceText)
+    .enter()
+    .append('text')
+    .attr('x',200)
+    .attr('y',400)
+    ;
+
+    svg
+      .selectAll('circle')
+      .data(iconArray)
+      .enter()
+      .append('circle')
+      .at({
+      	r: 3,
+      	fill: d => d.data.color,
+    	})
+      .attr('transform', function(d, i) {
+      	const rotation = angleScale(d.position.x);
+      	const distance = distanceScale(d.position.y);
+        if (i < 315) {
+          return 'rotate(' + rotation + ') translate(' + distance + ',-5)';
+        } else {
+          return 'rotate(' + rotation + ') translate(' + distance + ',5)';
+        }
+    	})
+      .on('mouseout', function(d){
+        div.transition()
+        .duration(3000)
+        .style('opacity',0.1)
+        // div.text(defaultTooltip)
+        d3.select(this)
+        .attr('stroke','none')
+        ;
+      })
+
+      .on('mouseover', function(d){
+        d3.select(this).attr('stroke', 'black')
+        div.transition()
+        .duration(200)
+        .attr('stroke-width', '3')
+        .style("opacity", 1)
+        div.text(d.data.sector+' organizations made up '+d.data.percent+'% of all 990 filers')
+        // div.html(function(d){
+        //   return (d.data.sector+' organizations made up '+d.data.percent+'% of all 990 filers')
+        // }) if you absolutely must style numbers differently
+        .style("left", (d3.event.pageX -115) + "px")
+                .style("top",(d3.event.pageY ) + "px");
+      });
+
+      var sourceLabel = svg.append("text")
+        .attr("class", "sourceLabel")
+        .attr('x',-205)
+        .attr('y',30)
+        .style("text-anchor", "center")
+        .attr("dy", "12")
+        .text(sourceText);
+
+  </script>
+</body>
